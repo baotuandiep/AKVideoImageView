@@ -26,4 +26,8 @@
 - (nullable instancetype)initWithFrame:(CGRect)frame
                               videoURL:(nonnull NSURL *)videoURL NS_DESIGNATED_INITIALIZER;
 
+- (void)pause;
+- (void)play;
+- (void)terminateAnimation;
+
 @end

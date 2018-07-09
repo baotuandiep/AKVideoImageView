@@ -105,7 +105,7 @@
     
     AVAssetReader *assetReader = [AVAssetReader assetReaderWithAsset:videoAsset error:nil];
     [assetReader addOutput:self.readerVideoTrackOutput];
-    
+
     return assetReader;
 }
 
@@ -119,7 +119,6 @@
         if (!self.reader) {
             self.reader = [self createAssetReader];
             [self.reader startReading];
-            
             self.previousFrameTime = kCMTimeZero;
             self.previousActualFrameTime = CFAbsoluteTimeGetCurrent();
             
@@ -128,6 +127,16 @@
             });
         }
     }
+}
+
+-(void)pause {
+    [self.reader cancelReading];
+}
+
+-(void)play{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+        [self processFramesFromReader:self.reader];
+    });
 }
 
 - (void)terminateAnimation
