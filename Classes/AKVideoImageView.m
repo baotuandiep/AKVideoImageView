@@ -19,6 +19,8 @@
 @property (assign) BOOL stopAnimation;
 @property (assign) BOOL newVideoAvalilible;
 
+@property BOOL isPause;
+
 ///The property used for storyboard support only
 @property (retain, nonatomic) IBInspectable NSString *videoFileName;
 
@@ -60,25 +62,26 @@
 
 - (void)didMoveToSuperview
 {
-	[super didMoveToSuperview];
-	
-	if (self.videoURL) { [self playVideo]; }
+    [super didMoveToSuperview];
+    
+    if (self.videoURL) { [self playVideo]; }
 }
 
 ///The property used for storyboard support only
 - (void)setVideoFileName:(NSString *)videoFileName
 {
-	if (videoFileName == _videoFileName) { return; }
-	
-	_videoFileName = videoFileName;
-	NSURL *videoFileURL = [[NSBundle bundleForClass:[self class]] URLForResource:videoFileName withExtension:@"mp4"];
-	self.videoURL = videoFileURL;
-	
-	[self playVideo];
+    if (videoFileName == _videoFileName) { return; }
+    
+    _videoFileName = videoFileName;
+    NSURL *videoFileURL = [[NSBundle bundleForClass:[self class]] URLForResource:videoFileName withExtension:@"mp4"];
+    self.videoURL = videoFileURL;
+    
+    [self playVideo];
 }
 
 - (void)setVideoURL:(nonnull NSURL *)videoURL
 {
+    self.isPause = NO;
     NSCParameterAssert([videoURL isKindOfClass:[NSURL class]]);
     if (videoURL == _videoURL) { return; }
     
@@ -89,7 +92,7 @@
 - (AVAssetReader *)createAssetReader
 {
     NSCParameterAssert([self.videoURL isKindOfClass:[NSURL class]]);
-
+    
     NSDictionary *inputOptions = [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES]
                                                              forKey:AVURLAssetPreferPreciseDurationAndTimingKey];
     AVURLAsset *videoAsset = [[AVURLAsset alloc] initWithURL:self.videoURL options:inputOptions];
@@ -105,12 +108,16 @@
     
     AVAssetReader *assetReader = [AVAssetReader assetReaderWithAsset:videoAsset error:nil];
     [assetReader addOutput:self.readerVideoTrackOutput];
-
+    
     return assetReader;
 }
 
 - (void)playVideo
 {
+    //    self.isPause = NO;
+    if (self.isPause) {
+        return;
+    }
     @synchronized(self) {
         NSCParameterAssert([self.videoURL isKindOfClass:[NSURL class]]);
         
@@ -130,10 +137,11 @@
 }
 
 -(void)pause {
-    [self.reader cancelReading];
+    self.isPause = YES;
 }
 
 -(void)play{
+    self.isPause = NO;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
         [self processFramesFromReader:self.reader];
     });
@@ -147,6 +155,9 @@
 
 - (void)processFramesFromReader:(AVAssetReader *)reader
 {
+    if (self.isPause) {
+        return;
+    }
     NSCParameterAssert([reader isKindOfClass:[AVAssetReader class]]);
     
     do {
@@ -174,12 +185,13 @@
         
         self.previousFrameTime = currentSampleTime;
         self.previousActualFrameTime = CFAbsoluteTimeGetCurrent();
-        
+        if (self.isPause) {
+            return;
+        }
         dispatch_sync(dispatch_get_main_queue(), ^{
             if (!self.stopAnimation) { self.layer.contents = layerImage; }
         });
     } while (reader.status == AVAssetReaderStatusReading && !self.stopAnimation && !self.newVideoAvalilible);
-    
     [self.reader cancelReading];
     self.reader = nil;
     self.newVideoAvalilible = NO;
