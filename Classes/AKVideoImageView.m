@@ -57,6 +57,14 @@
 
 - (void)dealloc
 {
+    self.stopAnimation = YES;
+    [self.reader cancelReading];
+    self.reader = nil;
+    self.newVideoAvalilible = NO;
+    self.isPause = YES;
+    self.readerVideoTrackOutput = nil;
+    [self terminateAnimation];
+    //    NSLog(@"dealloc %p",self);
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -87,6 +95,11 @@
     
     _videoURL = videoURL;
     self.newVideoAvalilible = YES;
+    if (self.stopAnimation) {
+        self.stopAnimation = NO;
+        self.isPause = NO;
+        [self playVideo];
+    }
 }
 
 - (AVAssetReader *)createAssetReader
@@ -142,6 +155,7 @@
 
 -(void)play{
     self.isPause = NO;
+    self.stopAnimation = NO;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
         [self processFramesFromReader:self.reader];
     });
@@ -150,11 +164,25 @@
 - (void)terminateAnimation
 {
     self.stopAnimation = YES;
+    [self.reader cancelReading];
+    self.reader = nil;
+    self.newVideoAvalilible = NO;
+    self.isPause = YES;
+    self.readerVideoTrackOutput = nil;
     [self showFirstFrame];
+}
+
+-(NSString *)uuid
+{
+    CFUUIDRef uuid = CFUUIDCreate(kCFAllocatorDefault);
+    NSString *uuidStr = (__bridge_transfer NSString *)CFUUIDCreateString(kCFAllocatorDefault, uuid);
+    CFRelease(uuid);
+    return uuidStr;
 }
 
 - (void)processFramesFromReader:(AVAssetReader *)reader
 {
+    //    NSLog(@"%p",self);
     if (self.isPause) {
         return;
     }
