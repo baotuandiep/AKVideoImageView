@@ -186,6 +186,16 @@
     if (self.isPause) {
         return;
     }
+    if (self.superview == nil) {
+        self.stopAnimation = YES;
+        [self.reader cancelReading];
+        self.reader = nil;
+        self.newVideoAvalilible = NO;
+        self.isPause = YES;
+        self.readerVideoTrackOutput = nil;
+        [self terminateAnimation];
+        return;
+    }
     NSCParameterAssert([reader isKindOfClass:[AVAssetReader class]]);
     
     do {
